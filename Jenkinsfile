@@ -59,12 +59,4 @@ pipeline {
         }
     }
 }
-    }  // <-- close stages
-
-    post {
-        always {
-            echo 'Cleaning up workspace...'
-            cleanWs()
-        }
-    }  // <-- close post
-}  // <-- close pipeline
+    

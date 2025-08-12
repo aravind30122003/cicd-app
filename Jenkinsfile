@@ -34,6 +34,31 @@ pipeline {
                 }
             }
         }
+     stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([string(credentialsId: 'kubeconfig-creds-text', variable: 'KUBECONFIG_CONTENT')]) {
+                    sh '''
+                        echo "$KUBECONFIG_CONTENT" > kubeconfig.yaml
+                        export KUBECONFIG=$PWD/kubeconfig.yaml
+                        
+                        # Optional: verify access
+                        kubectl get ns
+                        
+                        # Apply your k8s manifests here
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            sh 'docker logout'
+        }
+    }
+}
     }  // <-- close stages
 
     post {

@@ -1,67 +1,64 @@
 pipeline {
-  agent any
-  environment {
-    DOCKER_HUB_REPO = "aravind310730/k8s-cicd-app"
-    K8S_DEPLOYMENT = "k8s-cicd-deployment"
-    K8S_CONTAINER = "k8s-cicd-container"
-    // set credential IDs used in Jenkins (create these in Jenkins credentials store)
-    DOCKER_CREDENTIALS_ID = "docker-hub-creds"
-    KUBECONFIG_CREDENTIALS_ID = "kubeconfig-creds" 
-  }
-  stages {
-    stage('Checkout') {
-      steps { checkout scm }
+    agent any
+
+    environment {
+        // Set your Docker image name here
+        IMAGE_NAME = 'aravind310730/k8s-cicd-app:latest'
     }
-    stage('Build Image') {
-      steps {
-        script {
-          // use commit hash as tag if available
-          def shortCommit = sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
-          env.IMAGE_TAG = "${shortCommit}"
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git 'https://github.com/aravind30122003/k8s-cicd-app.git'
+            }
         }
-        sh "docker build -t ${DOCKER_HUB_REPO}:${IMAGE_TAG} ."
-      }
-    }
-    stage('Scan Image (Trivy)') {
-      steps {
-        // optional: fails pipeline on HIGH/CRITICAL vulnerabilities
-        sh '''
-          if command -v trivy >/dev/null 2>&1 ; then
-            trivy image --severity HIGH,CRITICAL --exit-code 1 ${DOCKER_HUB_REPO}:${IMAGE_TAG} || true
-          else
-            echo "Trivy not installed on agent; skipping scan"
-          fi
-        '''
-      }
-    }
-    stage('Push to Docker Hub') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-          sh '''
-            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-            docker push ${DOCKER_HUB_REPO}:${IMAGE_TAG}
-          '''
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    dockerImage = docker.build("${IMAGE_NAME}")
+                }
+            }
         }
-      }
-    }
-    stage('Deploy to Kubernetes') {
-      steps {
-        withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG_FILE')]) {
-          sh '''
-            export KUBECONFIG=$KUBECONFIG_FILE
-            kubectl set image deployment/${K8S_DEPLOYMENT} ${K8S_CONTAINER}=${DOCKER_HUB_REPO}:${IMAGE_TAG} --record
-            kubectl rollout status deployment/${K8S_DEPLOYMENT} --timeout=120s
-          '''
+
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                }
+            }
         }
-      }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    dockerImage.push()
+                }
+            }
+		}
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([string(credentialsId: 'kubeconfig-creds-text', variable: 'KUBECONFIG_CONTENT')]) {
+                    sh '''
+                        echo "$KUBECONFIG_CONTENT" > kubeconfig.yaml
+                        export KUBECONFIG=$PWD/kubeconfig.yaml
+
+                        # Optional: verify access
+                        kubectl get ns
+
+                        # Apply your k8s manifests here
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+                    '''
+                }
+            }
+        }
     }
-  }
-  post {
-    success {
-      echo "Pipeline succeeded. Image: ${DOCKER_HUB_REPO}:${IMAGE_TAG}"
+
+    post {
+        always {
+            sh 'docker logout'
+        }
     }
-    failure {
-      echo "Pipeline failed."
-    }
-  }
 }

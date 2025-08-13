@@ -40,13 +40,22 @@ pipeline {
             }
         }
 
-      }  // <-- close stages
+   stage('Run Docker Container') {
+            steps {
+                script {
+                    sh "docker run -d --name my-running-app -p 8080:8080 ${DOCKER_IMAGE}:latest"
+                }
+            }
+        }
+    }
 
     post {
-        always {
-            echo 'Cleaning up workspace...'
-            cleanWs()
+        failure {
+            echo "Pipeline failed! Check logs for details."
         }
-    }  // <-- close post
-}  // <-- close pipeline
+        success {
+            echo "Pipeline completed successfully."
+        }
+    }
+}
     

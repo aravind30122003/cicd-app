@@ -3,7 +3,7 @@ const express = require('express');
 const app = express();
 
 app.get('/', (req, res) => {
-  res.send('Hello from Kubernetes CI/CD! — v' + process.env.APP_VERSION || 'dev');
+  res.send('Hello from Kubernetes CI/CD! Created by Aravind');
 });
 
 app.get('/healthz', (req, res) => res.status(200).send('ok'));

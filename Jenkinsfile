@@ -18,6 +18,11 @@ pipeline {
                 sh "docker build -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest ."
             }
         }
+    stage('Trivy Scan') {
+            steps {
+                sh "trivy image ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest || true"
+            }
+        }
  
 
         stage('Push to DockerHub') {

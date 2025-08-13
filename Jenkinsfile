@@ -43,7 +43,7 @@ pipeline {
    stage('Run Docker Container') {
             steps {
                 script {
-                    sh "docker run -d --name my-running-app -p 3000:3000 ${DOCKER_IMAGE}:latest"
+                     sh "docker run -d --name my-running-app -p 3000:3000 ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest"
                 }
             }
         }

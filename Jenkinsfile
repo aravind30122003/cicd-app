@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "k8s-cicd-app" 
+        IMAGE_NAME = "cicd-app" 
         DOCKERHUB_USERNAME = "aravind310730"
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/aravind30122003/k8s-cicd-app.git', branch: 'main' 
+                git url: 'https://github.com/aravind30122003/cicd-app.git', branch: 'main' 
             }
         }
 
@@ -43,7 +43,7 @@ pipeline {
    stage('Run Docker Container') {
             steps {
                 script {
-                    sh "docker run -d --name my-running-app -p 8080:8080 ${DOCKER_IMAGE}:latest"
+                    sh "docker run -d --name my-running-app -p 3000:3000 ${DOCKER_IMAGE}:latest"
                 }
             }
         }
